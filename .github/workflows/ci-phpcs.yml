@@ -1,0 +1,195 @@
+name: "PHP Coding Standards"
+
+on:
+  push:
+    branches-ignore:
+      - "release/**"
+    paths:
+      - "**.php"
+      - ".github/workflows/ci-phpcs.yml"
+      - "phpcs.xml"
+  pull_request:
+    paths:
+      - "**.php"
+      - ".github/workflows/ci-phpcs.yml"
+      - "phpcs.xml"
+  workflow_dispatch:
+
+env:
+  PHP_VERSION: '8.2'
+  COMPOSER_FLAGS: '--prefer-dist --no-progress --no-interaction'
+
+jobs:
+  check-changes:
+    name: "Check Changed Files"
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+      changed_php_files: ${{ steps.changed-files.outputs.all_changed_files }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v41
+        with:
+          files_separator: ","
+          files: "**/*.php"
+
+      - name: Determine run scope
+        id: check
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] || \
+             [[ "${{ contains(github.event.commits.*.modified, '.github/workflows/ci-phpcs.yml') }}" == "true" ]] || \
+             [[ "${{ contains(github.event.commits.*.modified, 'phpcs.xml') }}" == "true" ]]; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+            echo "Config change or manual trigger — checking all files."
+          elif [[ -n "${{ steps.changed-files.outputs.all_changed_files }}" ]]; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+            echo "Changed files: ${{ steps.changed-files.outputs.all_changed_files }}"
+          else
+            echo "should_run=false" >> $GITHUB_OUTPUT
+            echo "No PHP files changed — skipping."
+          fi
+
+  php-lint:
+    name: "Syntax (${{ matrix.php }})"
+    runs-on: ubuntu-latest
+    needs: check-changes
+    if: ${{ needs.check-changes.outputs.should_run == 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.0', '8.1', '8.2', '8.3']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP ${{ matrix.php }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+        env:
+          debug: false
+
+      - name: Check PHP syntax
+        run: |
+          ERROR=0
+          while IFS= read -r -d '' file; do
+            php -l "$file" || ERROR=1
+          done < <(find src tests -name '*.php' -print0)
+          exit $ERROR
+
+  phpcs:
+    name: "PHPCS"
+    runs-on: ubuntu-latest
+    needs: check-changes
+    if: ${{ needs.check-changes.outputs.should_run == 'true' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP ${{ env.PHP_VERSION }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          tools: cs2pr, composer
+          coverage: none
+          ini-values: memory_limit=512M
+        env:
+          debug: false
+
+      - name: Check if running with act
+        id: is-act
+        run: |
+          if [ -n "$ACT" ]; then echo "is_act=true" >> $GITHUB_OUTPUT
+          else echo "is_act=false" >> $GITHUB_OUTPUT; fi
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        if: steps.is-act.outputs.is_act != 'true'
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer dependencies
+        if: steps.is-act.outputs.is_act != 'true'
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install Composer dependencies
+        run: |
+          composer config allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
+          composer install ${{ env.COMPOSER_FLAGS }}
+          mkdir -p phpcs-results
+
+      - name: Build file list
+        id: file-list
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] || \
+             [[ -z "${{ needs.check-changes.outputs.changed_php_files }}" ]]; then
+            echo "file_args=" >> $GITHUB_OUTPUT
+          else
+            IFS=',' read -ra FILES <<< "${{ needs.check-changes.outputs.changed_php_files }}"
+            printf '%s\n' "${FILES[@]}" > phpcs-files.txt
+            echo "file_args=--file-list=phpcs-files.txt" >> $GITHUB_OUTPUT
+            echo "Checking changed files only:"; cat phpcs-files.txt
+          fi
+
+      - name: Run PHPCS
+        run: |
+          vendor/bin/phpcs ${{ steps.file-list.outputs.file_args }} \
+            --report=full \
+            --report-checkstyle=phpcs-results/phpcs-report.xml \
+            || true
+
+      - name: Annotate with cs2pr
+        if: always()
+        run: |
+          if [ -f phpcs-results/phpcs-report.xml ]; then
+            cs2pr phpcs-results/phpcs-report.xml
+            ERROR_COUNT=$(grep -c 'type="error"' phpcs-results/phpcs-report.xml || echo "0")
+            WARNING_COUNT=$(grep -c 'type="warning"' phpcs-results/phpcs-report.xml || echo "0")
+            if [ "$ERROR_COUNT" -gt 0 ] && [ -z "$ACT" ]; then
+              echo "::error::PHPCS found $ERROR_COUNT errors."
+              exit 1
+            fi
+          fi
+
+      - name: Upload PHPCS report
+        if: ${{ !env.ACT && always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: phpcs-results
+          path: phpcs-results
+          retention-days: 5
+
+      - name: Step summary
+        if: always()
+        run: |
+          {
+            echo "## PHP Coding Standards"
+            if [ -f phpcs-results/phpcs-report.xml ]; then
+              E=$(grep -c 'type="error"' phpcs-results/phpcs-report.xml || echo 0)
+              W=$(grep -c 'type="warning"' phpcs-results/phpcs-report.xml || echo 0)
+              echo "| Errors | Warnings |"
+              echo "| ------ | -------- |"
+              echo "| $E | $W |"
+              [ "$E" -eq 0 ] && [ "$W" -eq 0 ] && echo "✅ **No issues found.**" || echo "❌ **Issues found — see report.**"
+            else
+              echo "❌ No report generated."
+            fi
+            echo ""
+            echo "### Workflow Structure"
+            echo '```'
+            echo "📊 Job Status Tree:"
+            echo "├── check-changes"
+            echo "├── php-lint (7.4 / 8.0 / 8.1 / 8.2 / 8.3)"
+            echo "└── phpcs"
+            echo '```'
+          } >> $GITHUB_STEP_SUMMARY

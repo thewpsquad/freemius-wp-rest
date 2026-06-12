@@ -1,0 +1,212 @@
+name: "PHPStan Static Analysis"
+
+on:
+  push:
+    branches-ignore:
+      - "release/**"
+    paths:
+      - "src/**/*.php"
+      - ".github/workflows/ci-phpstan.yml"
+      - "phpstan.neon"
+      - "phpstan-baseline.neon"
+      - "tests/Stubs/**"
+  pull_request:
+    paths:
+      - "src/**/*.php"
+      - ".github/workflows/ci-phpstan.yml"
+      - "phpstan.neon"
+      - "phpstan-baseline.neon"
+      - "tests/Stubs/**"
+  workflow_dispatch:
+
+env:
+  PHP_VERSION: '8.2'
+  PHPSTAN_MEMORY_LIMIT: '1G'
+  COMPOSER_FLAGS: '--prefer-dist --no-progress --no-interaction'
+
+jobs:
+  check-changes:
+    name: "Check Changed Files"
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+      changed_src_files: ${{ steps.changed-files.outputs.all_changed_files }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v41
+        with:
+          files_separator: ","
+          files: "src/**/*.php"
+
+      - name: Determine run scope
+        id: check
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] || \
+             [[ "${{ contains(github.event.commits.*.modified, '.github/workflows/ci-phpstan.yml') }}" == "true" ]] || \
+             [[ "${{ contains(github.event.commits.*.modified, 'phpstan.neon') }}" == "true" ]] || \
+             [[ "${{ contains(github.event.commits.*.modified, 'phpstan-baseline.neon') }}" == "true" ]]; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+            echo "Config change or manual trigger — analysing all src files."
+          elif [[ -n "${{ steps.changed-files.outputs.all_changed_files }}" ]]; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+            echo "Changed src files: ${{ steps.changed-files.outputs.all_changed_files }}"
+          else
+            echo "should_run=false" >> $GITHUB_OUTPUT
+            echo "No src PHP files changed — skipping."
+          fi
+
+  phpstan:
+    name: "PHPStan (level 8)"
+    runs-on: ubuntu-latest
+    needs: check-changes
+    if: ${{ needs.check-changes.outputs.should_run == 'true' }}
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP ${{ env.PHP_VERSION }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          coverage: none
+          tools: composer
+          ini-values: memory_limit=512M
+        env:
+          debug: false
+
+      - name: Check if running with act
+        id: is-act
+        run: |
+          if [ -n "$ACT" ]; then echo "is_act=true" >> $GITHUB_OUTPUT
+          else echo "is_act=false" >> $GITHUB_OUTPUT; fi
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        if: steps.is-act.outputs.is_act != 'true'
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer dependencies
+        if: steps.is-act.outputs.is_act != 'true'
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install Composer dependencies
+        run: |
+          composer config allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
+          composer install ${{ env.COMPOSER_FLAGS }}
+          mkdir -p phpstan-results
+
+      - name: Check for existing baseline
+        id: baseline
+        run: |
+          if [ -f phpstan-baseline.neon ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build paths file for changed-files run
+        id: paths
+        if: >
+          needs.check-changes.outputs.changed_src_files != '' &&
+          github.event_name != 'workflow_dispatch'
+        run: |
+          IFS=',' read -ra FILES <<< "${{ needs.check-changes.outputs.changed_src_files }}"
+          printf '%s\n' "${FILES[@]}" > phpstan-paths.txt
+          echo "paths_file=phpstan-paths.txt" >> $GITHUB_OUTPUT
+          echo "Analysing changed files:"; cat phpstan-paths.txt
+
+      - name: Run PHPStan (changed files, with baseline)
+        if: >
+          steps.baseline.outputs.exists == 'true' &&
+          needs.check-changes.outputs.changed_src_files != '' &&
+          github.event_name != 'workflow_dispatch'
+        run: |
+          vendor/bin/phpstan analyse \
+            --memory-limit=${{ env.PHPSTAN_MEMORY_LIMIT }} \
+            --error-format=github \
+            --no-progress \
+            --paths-file=phpstan-paths.txt \
+            | tee phpstan-results/output.txt
+
+      - name: Run PHPStan (all files, with baseline)
+        if: >
+          steps.baseline.outputs.exists == 'true' &&
+          (needs.check-changes.outputs.changed_src_files == '' || github.event_name == 'workflow_dispatch')
+        run: |
+          vendor/bin/phpstan analyse \
+            --memory-limit=${{ env.PHPSTAN_MEMORY_LIMIT }} \
+            --error-format=github \
+            --no-progress \
+            | tee phpstan-results/output.txt
+
+      - name: Generate baseline then run (no baseline yet)
+        if: steps.baseline.outputs.exists == 'false'
+        run: |
+          vendor/bin/phpstan analyse \
+            --memory-limit=${{ env.PHPSTAN_MEMORY_LIMIT }} \
+            --no-progress \
+            --generate-baseline \
+            || true
+          vendor/bin/phpstan analyse \
+            --memory-limit=${{ env.PHPSTAN_MEMORY_LIMIT }} \
+            --error-format=github \
+            --no-progress \
+            | tee phpstan-results/output.txt
+
+      - name: Upload PHPStan results
+        if: ${{ !env.ACT && always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: phpstan-results
+          path: |
+            phpstan-results
+            phpstan-baseline.neon
+          retention-days: 7
+
+      - name: Check result
+        if: always()
+        run: |
+          if [ -f phpstan-results/output.txt ] && grep -q "\[ERROR\]" phpstan-results/output.txt; then
+            COUNT=$(grep -c "\[ERROR\]" phpstan-results/output.txt || echo 0)
+            echo "PHPStan found $COUNT error(s)."
+            [ -z "$ACT" ] && { echo "::error::PHPStan level 8 failed with $COUNT error(s)."; exit 1; }
+          fi
+
+      - name: Step summary
+        if: always()
+        run: |
+          {
+            echo "## PHPStan Static Analysis (level 8)"
+            if [ -f phpstan-results/output.txt ]; then
+              COUNT=$(grep -c "\[ERROR\]" phpstan-results/output.txt || echo 0)
+              echo "| Errors |"
+              echo "| ------ |"
+              echo "| $COUNT |"
+              [ "$COUNT" -eq 0 ] && echo "✅ **No errors.**" || echo "❌ **$COUNT error(s) found.**"
+            else
+              echo "❌ No output captured."
+            fi
+            BASELINE="${{ steps.baseline.outputs.exists }}"
+            echo ""
+            echo "### Baseline"
+            [ "$BASELINE" == "true" ] && echo "✅ Using existing baseline." || echo "🆕 Generated new baseline."
+            echo ""
+            echo "### Workflow Structure"
+            echo '```'
+            echo "📊 Job Status Tree:"
+            echo "├── check-changes"
+            echo "└── phpstan"
+            echo '```'
+          } >> $GITHUB_STEP_SUMMARY
