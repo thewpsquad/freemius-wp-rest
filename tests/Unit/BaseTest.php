@@ -14,7 +14,7 @@ use Mockery;
 use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
 use PHPUnit\Framework\TestCase;
 use TheWPSquad\FreemiusRest\Route\Base;
-use TheWPSquad\FreemiusRest\Tests\Stubs\MockProvider;
+use TheWPSquad\FreemiusRest\Tests\Unit\Support\MockProvider;
 use WP_Error;
 use WP_REST_Response;
 

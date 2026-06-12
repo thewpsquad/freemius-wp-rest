@@ -3,10 +3,10 @@
 /**
  * Test implementation of FreemiusProvider.
  *
- * @package TheWPSquad\FreemiusRest\Tests\Stubs
+ * @package TheWPSquad\FreemiusRest\Tests\Unit\Support
  */
 
-namespace TheWPSquad\FreemiusRest\Tests\Stubs;
+namespace TheWPSquad\FreemiusRest\Tests\Unit\Support;
 
 use Freemius;
 use TheWPSquad\FreemiusRest\Contracts\FreemiusProvider;
