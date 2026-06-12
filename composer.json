@@ -1,0 +1,29 @@
+{
+    "name": "thewpsquad/freemius-wp-rest",
+    "description": "Reusable WP REST API proxy routes for the Freemius WordPress SDK — account, license, affiliate, pricing.",
+    "type": "library",
+    "license": "GPL-3.0-only",
+    "authors": [
+        {
+            "name": "The WP Squad",
+            "email": "support@squadmodules.com",
+            "homepage": "https://squadmodules.com"
+        }
+    ],
+    "require": {
+        "php": ">=7.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "TheWPSquad\\FreemiusRest\\": "src/"
+        }
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-main": "1.0.x-dev"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    }
+}
