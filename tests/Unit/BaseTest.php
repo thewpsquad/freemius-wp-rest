@@ -46,7 +46,6 @@ class BaseTest extends TestCase {
 
         Functions\when( '__' )->returnArg( 1 );
         Functions\when( 'esc_html__' )->returnArg( 1 );
-        Functions\when( 'register_rest_route' )->justReturn( true );
     }
 
     protected function tearDown(): void {

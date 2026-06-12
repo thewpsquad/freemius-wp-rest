@@ -29,7 +29,6 @@ class NoticesRoutesTest extends TestCase {
         Monkey\setUp();
         Functions\when( '__' )->returnArg( 1 );
         Functions\when( 'esc_html__' )->returnArg( 1 );
-        Functions\when( 'sprintf' )->alias( 'sprintf' );
         Functions\when( 'get_current_user_id' )->justReturn( 1 );
         Functions\when( 'get_user_meta' )->justReturn( array() );
     }

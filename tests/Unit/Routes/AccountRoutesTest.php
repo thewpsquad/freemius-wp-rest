@@ -144,8 +144,6 @@ class AccountRoutesTest extends TestCase {
     public function test_activate_license_returns_400_for_empty_key(): void {
         $fs = Mockery::mock( 'Freemius' );
 
-        Functions\when( 'trim' )->alias( 'trim' );
-
         $account = $this->make_account( $fs );
         $request = Mockery::mock( 'WP_REST_Request' );
         $request->shouldReceive( 'get_param' )

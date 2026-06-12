@@ -11,9 +11,12 @@
 
 require_once dirname( __DIR__ ) . '/vendor/autoload.php';
 
-// Freemius class + constant stubs (generated from the real SDK).
-require_once dirname( __DIR__ ) . '/vendor/mralaminahamed/freemius-stubs/freemius-stubs.stub';
-require_once dirname( __DIR__ ) . '/vendor/mralaminahamed/freemius-stubs/freemius-constants-stubs.stub';
-
-// WordPress extra stubs (DAY_IN_SECONDS, AUTH_KEY) not provided by Brain\Monkey.
+// Constants first — Mockery evaluates default param values at mock-generation
+// time, so WP_FS__* constants must exist before the class stubs are loaded.
 require_once __DIR__ . '/phpstan/stubs/wordpress-extra.php';
+
+// Freemius class hierarchy stubs (generated from the real SDK).
+// Constants stub excluded — it calls is_multisite() which requires WordPress.
+if ( ! class_exists( 'Freemius' ) ) {
+	require_once dirname( __DIR__ ) . '/vendor/mralaminahamed/freemius-stubs/freemius-stubs.stub';
+}
