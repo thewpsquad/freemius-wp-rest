@@ -16,4 +16,4 @@ require_once dirname( __DIR__ ) . '/vendor/mralaminahamed/freemius-stubs/freemiu
 require_once dirname( __DIR__ ) . '/vendor/mralaminahamed/freemius-stubs/freemius-constants-stubs.stub';
 
 // WordPress extra stubs (DAY_IN_SECONDS, AUTH_KEY) not provided by Brain\Monkey.
-require_once __DIR__ . '/Stubs/wordpress-extra.php';
+require_once __DIR__ . '/phpstan/stubs/wordpress-extra.php';
