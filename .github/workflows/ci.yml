@@ -2,24 +2,22 @@ name: CI
 
 on:
   push:
-    branches: [trunk]
+    branches: [main, trunk]
   pull_request:
-    branches: [trunk]
+    branches: [main, trunk]
 
 jobs:
   php-lint:
-    name: PHP ${{ matrix.php }}
+    name: PHP Lint (${{ matrix.php }})
     runs-on: ubuntu-latest
-
     strategy:
       fail-fast: false
       matrix:
         php: ['7.4', '8.0', '8.1', '8.2', '8.3']
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup PHP
+      - name: Set up PHP ${{ matrix.php }}
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
@@ -28,28 +26,69 @@ jobs:
       - name: Validate composer.json
         run: composer validate --no-interaction --strict
 
-      - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress
-
-      - name: Syntax check
-        run: find src -name "*.php" -exec php -l {} \; | grep -v "^No syntax errors"  || true
+      - name: Check PHP syntax
+        run: |
+          ERROR=0
+          while IFS= read -r -d '' file; do
+            php -l "$file" || ERROR=1
+          done < <(find src tests -name '*.php' -print0)
+          exit $ERROR
 
   phpcs:
     name: PHPCS
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup PHP
+      - name: Set up PHP 8.2
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
           tools: cs2pr
           coverage: none
 
-      - name: Install dependencies
+      - name: Install Composer dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: Run PHPCS
         run: vendor/bin/phpcs --report=checkstyle | cs2pr
+
+  phpstan:
+    name: PHPStan (level 8)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Run PHPStan
+        run: composer run phpstan
+
+  tests:
+    name: PHPUnit (${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.1', '8.2']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP ${{ matrix.php }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Run PHPUnit
+        run: composer run test

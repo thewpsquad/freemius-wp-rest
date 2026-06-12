@@ -1,0 +1,26 @@
+includes:
+    - vendor/szepeviktor/phpstan-wordpress/extension.neon
+
+parameters:
+    level: 8
+    paths:
+        - src
+    bootstrapFiles:
+        - tests/Stubs/freemius.php
+        - tests/Stubs/wordpress-extra.php
+    treatPhpDocTypesAsCertain: false
+
+    ignoreErrors:
+        # Freemius SDK exposes data objects with untyped stdClass properties.
+        # We guard all access with ?? so these are safe.
+        - '#Cannot access property \$[a-z_]+ on object\.#'
+        - '#Access to an undefined property object::\$[a-z_]+\.#'
+
+        # Freemius internal methods accessed via ReflectionMethod — intentional.
+        - '#Call to an undefined method Freemius::#'
+
+        # get_api_*_scope() returns FS_Api|null; null is handled by is_registered() guard.
+        - '#Cannot call method (get|call|post|delete)\(\) on FS_Api\|null\.#'
+
+        # WP REST callback return type includes WP_REST_Response|WP_Error — WP convention.
+        - '#Method TheWPSquad\\FreemiusRest\\Routes\\[A-Za-z]+::(get_|set_|apply_|cancel_|activate_|deactivate_|disconnect|skip_|start_|dismiss_)[a-z_]+\(\) should return.*but returns WP_Error\.#'
