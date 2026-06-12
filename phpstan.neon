@@ -9,6 +9,7 @@ parameters:
         - vendor/mralaminahamed/freemius-stubs/freemius-stubs.stub
         - vendor/mralaminahamed/freemius-stubs/freemius-constants-stubs.stub
     bootstrapFiles:
+        - tests/phpstan/bootstrap.php
         - tests/Stubs/wordpress-extra.php
     treatPhpDocTypesAsCertain: false
 
