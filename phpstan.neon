@@ -5,8 +5,10 @@ parameters:
     level: 8
     paths:
         - src
+    scanFiles:
+        - vendor/mralaminahamed/freemius-stubs/freemius-stubs.stub
+        - vendor/mralaminahamed/freemius-stubs/freemius-constants-stubs.stub
     bootstrapFiles:
-        - tests/Stubs/freemius.php
         - tests/Stubs/wordpress-extra.php
     treatPhpDocTypesAsCertain: false
 
