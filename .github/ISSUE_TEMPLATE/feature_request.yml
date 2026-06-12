@@ -1,0 +1,41 @@
+name: Feature Request
+description: Propose a new endpoint, route class, or interface method.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Keep in mind this package is intentionally narrow — Freemius proxy routes only.
+        Requests for plugin-specific logic belong in the consuming plugin.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Explain the use case, not the solution.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe the endpoint, method signature, or interface change.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What else did you try or consider?
+
+  - type: checkboxes
+    id: compat
+    attributes:
+      label: Compatibility
+      options:
+        - label: Backwards compatible (no FreemiusProvider interface changes)
+          required: false
+        - label: PHP 7.4 compatible
+          required: false

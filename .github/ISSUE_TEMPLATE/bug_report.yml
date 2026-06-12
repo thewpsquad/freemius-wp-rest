@@ -1,0 +1,74 @@
+name: Bug Report
+description: Something is broken in a route or the base class.
+labels: [bug, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Fill in as much detail as possible — especially the PHP version, WP version, and Freemius SDK version.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Clear description of the bug.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Implement FreemiusProvider with ...
+        2. Register Account routes
+        3. Call GET /namespace/v2/account
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+
+  - type: textarea
+    id: provider
+    attributes:
+      label: Your FreemiusProvider implementation
+      description: Paste the relevant parts (redact secrets).
+      render: php
+
+  - type: input
+    id: php
+    attributes:
+      label: PHP version
+      placeholder: "8.2"
+    validations:
+      required: true
+
+  - type: input
+    id: wp
+    attributes:
+      label: WordPress version
+      placeholder: "6.5"
+    validations:
+      required: true
+
+  - type: input
+    id: freemius
+    attributes:
+      label: Freemius SDK version
+      placeholder: "2.7.0"
+    validations:
+      required: true
+
+  - type: input
+    id: package
+    attributes:
+      label: Package version
+      placeholder: "1.0.0"
+    validations:
+      required: true

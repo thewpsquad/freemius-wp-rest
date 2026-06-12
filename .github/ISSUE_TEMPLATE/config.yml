@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Freemius SDK docs
+    url: https://freemius.com/help/documentation/wordpress-sdk/
+    about: Official Freemius WordPress SDK documentation
+  - name: WP REST API handbook
+    url: https://developer.wordpress.org/rest-api/
+    about: WordPress REST API reference
