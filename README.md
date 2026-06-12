@@ -87,6 +87,54 @@ Cached 12 h. Clears on successful application.
 | `/affiliate` | GET | Affiliate status + programme terms |
 | `/affiliate/apply` | POST | Submit affiliate application |
 
+### Payments — `GET /my-plugin/v2/payments`
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/payments` | GET | Paginated payment history (cached 1 h). Params: `count` (1–50, default 20), `offset` |
+| `/payments/{id}` | GET | Single payment detail |
+
+### Subscriptions — `GET /my-plugin/v2/subscriptions`
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/subscriptions` | GET | Active subscriptions (cached 1 h) |
+| `/subscriptions/{id}/cancel` | POST | Cancel a subscription (`reason` optional) |
+
+### Connect — `GET /my-plugin/v2/connect`
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/connect` | GET | Connection status, flags, user, site, URLs |
+| `/connect/optin` | POST | Returns opt-in redirect URL / triggers `connect_again()` |
+| `/connect/skip` | POST | Skip opt-in — set anonymous mode |
+| `/connect` | DELETE | Disconnect site from Freemius |
+
+### Addons — `GET /my-plugin/v2/addons`
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/addons` | GET | All add-ons with activation state (SDK-first, cached 6 h) |
+| `/addons/{id}` | GET | Single add-on detail |
+
+### Trial — `GET /my-plugin/v2/trial`
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/trial` | GET | Trial status, days remaining, eligibility, trial URL |
+| `/trial/start` | POST | Start trial (`plan_id` required) |
+
+### Notices — `GET /my-plugin/v2/notices`
+
+Notices are computed from live SDK state (not stored). Dismissed per-user via WordPress user meta.
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/notices` | GET | Active undismissed notices (license expiry, trial ending, not connected, etc.) |
+| `/notices/{id}/dismiss` | POST | Dismiss a notice for the current user |
+
+Notice IDs: `not_connected`, `no_license`, `license_expiring`, `license_expired`, `trial_ending`, `pending_activation`
+
 ### Pricing — `GET /my-plugin/v2/pricing`
 
 No cache — always returns live prices.

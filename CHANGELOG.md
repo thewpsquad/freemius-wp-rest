@@ -9,6 +9,15 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `Routes\Payments` — `GET /payments` (paginated, cached 1 h) + `GET /payments/{id}`
+- `Routes\Subscriptions` — `GET /subscriptions` (cached 1 h) + `POST /subscriptions/{id}/cancel`
+- `Routes\Connect` — `GET /connect`, `POST /connect/optin`, `POST /connect/skip`, `DELETE /connect`
+- `Routes\Addons` — `GET /addons` (cached 6 h, SDK-first) + `GET /addons/{id}`
+- `Routes\Trial` — `GET /trial` (status + days remaining) + `POST /trial/start`
+- `Routes\Notices` — `GET /notices` (computed from SDK state) + `POST /notices/{id}/dismiss` (per-user meta)
+
 ## [1.0.0] — 2026-06-12
 
 ### Added
