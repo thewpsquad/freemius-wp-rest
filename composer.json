@@ -33,7 +33,7 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "TheWPSquad\\FreemiusRest\\Tests\\": "tests/"
+            "TheWPSquad\\FreemiusRest\\Tests\\Unit\\": "tests/Unit/"
         }
     },
     "scripts": {
