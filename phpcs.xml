@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<ruleset name="freemius-wp-rest">
+    <description>Coding standards for thewpsquad/freemius-wp-rest</description>
+
+    <file>src</file>
+
+    <arg name="basepath" value="."/>
+    <arg name="extensions" value="php"/>
+    <arg name="parallel" value="8"/>
+    <arg value="sp"/>
+
+    <!-- WordPress Coding Standards -->
+    <rule ref="WordPress-Core"/>
+    <rule ref="WordPress-Docs"/>
+
+    <!-- PHP compatibility -->
+    <rule ref="PHPCompatibilityWP"/>
+    <config name="testVersion" value="7.4-"/>
+    <config name="minimum_supported_wp_version" value="6.0"/>
+
+    <!-- Package-specific exclusions -->
+
+    <!-- Variable text domain is intentional in a library -->
+    <rule ref="WordPress.WP.I18n">
+        <properties>
+            <property name="text_domain" type="array">
+                <element value=""/>
+            </property>
+        </properties>
+    </rule>
+
+    <!-- ReflectionMethod is required to call private Freemius methods -->
+    <rule ref="WordPress.PHP.DevelopmentFunctions">
+        <exclude name="WordPress.PHP.DevelopmentFunctions.error_log_trigger_error"/>
+    </rule>
+</ruleset>
